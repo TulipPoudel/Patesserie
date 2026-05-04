@@ -1,6 +1,7 @@
 package com.patisserie.controller;
 
 import jakarta.servlet.ServletException;
+import java.sql.SQLException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpSession;
 import jakarta.servlet.annotation.WebServlet;
@@ -108,7 +109,8 @@ public class LoginServlet extends HttpServlet {
             }
  
         } catch (SQLException e) {
-            request.setAttribute("error", "Something went wrong. Please try again later.");
+            e.printStackTrace();
+            request.setAttribute("error", e.getMessage());
             request.getRequestDispatcher("/WEB-INF/pages/login.jsp").forward(request, response);
         }
     }
@@ -116,9 +118,9 @@ public class LoginServlet extends HttpServlet {
     private void redirectByRole(HttpServletRequest req, HttpServletResponse res, User user)
             throws IOException {
         if ("admin".equals(user.getRole())) {
-            res.sendRedirect(req.getContextPath() + "/admin/dashboard");
+            res.sendRedirect(req.getContextPath() + "/AdminDashboardServlet");
         } else {
-            res.sendRedirect(req.getContextPath() + "/dashboard");
+            res.sendRedirect(req.getContextPath() + "/DashboardServlet");
         }
     }
 }

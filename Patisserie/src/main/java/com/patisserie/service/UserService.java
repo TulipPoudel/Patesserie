@@ -6,11 +6,11 @@ import com.patisserie.model.User;
  
 import java.security.MessageDigest;
 import java.sql.*;
- 
+
 public class UserService {
- 
+
     private static final int MAX_FAILED = 5;
- 
+
     // Converts plain text password to hash
     public String hashPassword(String password) {
         try {
@@ -23,7 +23,7 @@ public class UserService {
             throw new RuntimeException("Hashing failed", e);
         }
     }
- 
+
     // Returns User if credentials correct, null if wrong
     public User login(String email, String password) throws SQLException {
         String sql = "SELECT * FROM users WHERE email = ?";
@@ -34,7 +34,7 @@ public class UserService {
             if (rs.next()) {
                 if (rs.getBoolean("is_locked")) return null;
                 if (rs.getString("password").equals(hashPassword(password))) {
-                    resetAttempts(email);
+                    resetAttempts(email);  // ← now defined below
                     return mapUser(rs);
                 } else {
                     incrementAttempts(email, rs.getInt("failed_attempts"));
@@ -43,7 +43,7 @@ public class UserService {
         }
         return null;
     }
- 
+
     // Returns true if registered OK, false if email already exists
     public boolean register(String fullName, String email, String password, String phone)
             throws SQLException {
@@ -59,7 +59,7 @@ public class UserService {
             return true;
         }
     }
- 
+
     public boolean isLocked(String email) throws SQLException {
         String sql = "SELECT is_locked FROM users WHERE email = ?";
         try (Connection conn = DBConfig.getConnection();
@@ -69,7 +69,7 @@ public class UserService {
             return rs.next() && rs.getBoolean("is_locked");
         }
     }
- 
+
     public boolean emailExists(String email) throws SQLException {
         String sql = "SELECT user_id FROM users WHERE email = ?";
         try (Connection conn = DBConfig.getConnection();
@@ -78,7 +78,7 @@ public class UserService {
             return ps.executeQuery().next();
         }
     }
- 
+
     private void incrementAttempts(String email, int current) throws SQLException {
         int next = current + 1;
         String sql = "UPDATE users SET failed_attempts=?, is_locked=? WHERE email=?";
@@ -90,4 +90,25 @@ public class UserService {
             ps.executeUpdate();
         }
     }
- 
+
+    // ← THIS WAS MISSING — resets failed attempts on successful login
+    private void resetAttempts(String email) throws SQLException {
+        String sql = "UPDATE users SET failed_attempts=0, is_locked=false WHERE email=?";
+        try (Connection conn = DBConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email);
+            ps.executeUpdate();
+        }
+    }
+
+    // Maps a ResultSet row to a User object
+    private User mapUser(ResultSet rs) throws SQLException {
+        User user = new User();
+        user.setUserId(rs.getInt("user_id"));
+        user.setFullName(rs.getString("full_name"));
+        user.setEmail(rs.getString("email"));
+        user.setRole(rs.getString("role"));
+        user.setPhone(rs.getString("phone"));
+        return user;
+    }
+}

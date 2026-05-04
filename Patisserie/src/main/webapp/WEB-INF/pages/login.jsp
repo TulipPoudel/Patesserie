@@ -15,7 +15,7 @@
 
         <%-- Logo / branding --%>
         <div class="auth-logo">
-            <h1>&#127968; La Farine</h1>
+            <h1>La Farine</h1>
             <p>Pâtisserie &mdash; Sign in to your account</p>
         </div>
 
@@ -41,7 +41,7 @@
         <% } %>
 
         <%-- Login form --%>
-        <form action="<%= request.getContextPath() %>/login" method="post">
+        <form action="<%= request.getContextPath() %>/LoginServlet" method="post">
 
             <div class="form-group">
                 <label for="email">Email address</label>
@@ -82,7 +82,7 @@
 
         <div class="auth-footer">
             Don't have an account?
-            <a href="<%= request.getContextPath() %>/register">Create one here</a>
+            <a href="<%= request.getContextPath() %>/RegisterServlet">Create one here</a>
         </div>
 
     </div>

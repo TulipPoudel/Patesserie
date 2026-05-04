@@ -1,15 +1,16 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ page import="com.patisserie.model.User" %>
+<%@ page import="jakarta.servlet.http.Cookie" %>
 <%
     // Security check - if not logged in, go to login
     User user = (User) session.getAttribute("user");
     if (user == null) {
-        response.sendRedirect(request.getContextPath() + "/login");
+        response.sendRedirect(request.getContextPath() + "/LoginServlet");
         return;
     }
     // If not admin, send to customer dashboard
     if (!"admin".equals(user.getRole())) {
-        response.sendRedirect(request.getContextPath() + "/dashboard");
+        response.sendRedirect(request.getContextPath() + "/DashboardServlet");
         return;
     }
 %>
@@ -26,12 +27,14 @@
 <%-- Navbar --%>
 <nav class="navbar">
     <div class="container">
-        <a href="<%= request.getContextPath() %>/admin/dashboard" class="navbar-brand">
+        <a href="<%= request.getContextPath() %>/AdminDashboardServlet" class="navbar-brand">
             La Farine <span>Admin Panel</span>
         </a>
         <div class="navbar-links">
-            <a href="<%= request.getContextPath() %>/admin/dashboard" class="active">Dashboard</a>
-            <a href="<%= request.getContextPath() %>/logout">Logout</a>
+            <a href="<%= request.getContextPath() %>/AdminDashboardServlet" class="active">Dashboard</a>
+            <a href="<%= request.getContextPath() %>/AdminPastriesServlet">Manage Menu</a>
+			<a href="<%= request.getContextPath() %>/AdminUsersServlet">Manage Users</a>
+            <a href="<%= request.getContextPath() %>/LogoutServlet">Logout</a>
         </div>
     </div>
 </nav>

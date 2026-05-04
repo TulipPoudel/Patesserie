@@ -14,7 +14,7 @@
     <div class="auth-box">
 
         <div class="auth-logo">
-            <h1>&#127968; La Farine</h1>
+            <h1>La Farine</h1>
             <p>Create your account</p>
         </div>
 
@@ -25,7 +25,7 @@
             </div>
         <% } %>
 
-        <form action="<%= request.getContextPath() %>/register" method="post">
+        <form action="<%= request.getContextPath() %>/RegisterServlet" method="post">
 
             <div class="form-group">
                 <label for="fullName">Full name</label>
@@ -82,7 +82,7 @@
 
         <div class="auth-footer">
             Already have an account?
-            <a href="<%= request.getContextPath() %>/login">Sign in here</a>
+            <a href="<%= request.getContextPath() %>/LoginServlet">Sign in here</a>
         </div>
 
     </div>

@@ -9,7 +9,7 @@ public class DBConfig {
 
     private static final String URL      = "jdbc:mysql://localhost:3306/patisseriedb?useSSL=false&serverTimezone=UTC";
     private static final String USERNAME = "root";
-    private static final String PASSWORD = ""; // Leave blank if no MySQL password set
+    private static final String PASSWORD = "root"; // Leave blank if no MySQL password set
 
     static {
         try {

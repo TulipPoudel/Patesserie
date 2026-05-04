@@ -37,7 +37,7 @@ public class LogoutServlet extends HttpServlet {
         response.addCookie(nameCookie);
  
         // 3. Send user back to login page
-        response.sendRedirect(request.getContextPath() + "/login");
+        response.sendRedirect(request.getContextPath() + "/LoginServlet");
     }
 }
  
