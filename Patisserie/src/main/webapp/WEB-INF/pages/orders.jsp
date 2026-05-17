@@ -5,7 +5,7 @@
 <%
     User user = (User) session.getAttribute("user");
     if (user == null) {
-        response.sendRedirect(request.getContextPath() + "/LoginServlet");
+        response.sendRedirect(request.getContextPath() + "/DashboardServlet");
         return;
     }
 
@@ -23,43 +23,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Orders – La Farine Pâtisserie</title>
-    <link rel="stylesheet" href="<%= request.getContextPath() %>/css/style.css">
+    <title>My Orders – L'Atelier Sucré Pâtisserie</title>
+    <link rel="stylesheet" href="<%= request.getContextPath() %>/css/style.css?v=2">
+    <style>
+        .orders-hero {
+            position: relative;
+            padding: calc(var(--nav-h) + 4.5rem) 0 4.5rem;
+            text-align: center;
+            overflow: hidden;
+            background: var(--brown-dark);
+        }
+        .orders-hero::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(160deg, rgba(26,11,4,0.88) 0%, rgba(58,32,16,0.78) 45%, rgba(92,56,32,0.72) 100%);
+            z-index: 1;
+        }
+        /* Future image slot — drop an <img> inside .orders-hero and it will fill as overlay */
+        .orders-hero img.hero-img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.32;
+            z-index: 0;
+        }
+        .orders-hero-content { position: relative; z-index: 2; }
+        .orders-hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2.2rem, 5vw, 4rem);
+            font-weight: 300;
+            color: #fff;
+            letter-spacing: 0.06em;
+            margin-bottom: 0.5rem;
+        }
+        .orders-hero p {
+            font-family: var(--font-display);
+            font-style: italic;
+            color: rgba(255,255,255,0.55);
+            font-size: 1rem;
+            max-width: 460px;
+            margin: 0 auto;
+        }
+        .orders-hero-line {
+            width: 45px;
+            height: 1px;
+            background: var(--gold);
+            margin: 1.2rem auto;
+        }
+        .orders-hero-actions {
+            position: relative;
+            z-index: 2;
+            margin-top: 1.8rem;
+        }
+    </style>
 </head>
 <body>
 
 <%-- Navbar --%>
-<nav class="navbar">
-    <div class="container">
-        <a href="<%= request.getContextPath() %>/DashboardServlet" class="navbar-brand">
-            La Farine <span>Pâtisserie</span>
-        </a>
-        <div class="navbar-links">
-            <a href="<%= request.getContextPath() %>/DashboardServlet">Dashboard</a>
-            <a href="<%= request.getContextPath() %>/ProductsServlet">Menu</a>
-            <a href="<%= request.getContextPath() %>/ReservationServlet">Reserve Table</a>
-            <a href="<%= request.getContextPath() %>/OrderServlet" class="active">
-                My Orders
-                <% if (cartItems != null && !cartItems.isEmpty()) { %>
-                    <span class="cart-badge"><%= cartItems.size() %></span>
-                <% } %>
-            </a>
-            <a href="<%= request.getContextPath() %>/LocationServlet">Locations</a>
-            <a href="<%= request.getContextPath() %>/LogoutServlet">Logout</a>
-        </div>
+<%@ include file="../includes/navbar.jsp" %>
+
+<div class="orders-hero">
+    <img class="hero-img" src="<%= request.getContextPath() %>/images/croi.jpg" alt="">
+    <div class="orders-hero-content">
+        <div class="section-eyebrow" style="color:var(--gold); margin-bottom:0.8rem;">L'Atelier Sucré</div>
+        <h1>My Orders</h1>
+        <div class="orders-hero-line"></div>
+        <p>Review your basket and track your order history</p>
     </div>
-</nav>
+    <div class="orders-hero-actions">
+        <a href="<%= request.getContextPath() %>/ProductsServlet" class="btn btn-outline" style="border-color:rgba(255,255,255,0.4); color:#fff;">+ Add More Items</a>
+    </div>
+</div>
 
 <div class="page-content">
     <div class="container">
-
-        <div class="page-header">
-            <div>
-                <h1>&#128203; My Orders</h1>
-                <p style="color:#888; margin-top:0.3rem;">Review your basket and past orders</p>
-            </div>
-            <a href="<%= request.getContextPath() %>/ProductsServlet" class="btn btn-outline">&#43; Add More Items</a>
-        </div>
 
         <%-- Success / error messages --%>
         <% if (request.getAttribute("success") != null) { %>
@@ -178,12 +218,27 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <% for (Map<String, Object> order : pastOrders) { %>
+                            <% for (Map<String, Object> order : pastOrders) {
+                                   @SuppressWarnings("unchecked")
+                                   java.util.List<Map<String,Object>> oItems =
+                                       (java.util.List<Map<String,Object>>) order.get("items");
+                                   StringBuilder itemSummary = new StringBuilder();
+                                   if (oItems != null) {
+                                       for (int ii = 0; ii < oItems.size(); ii++) {
+                                           if (ii > 0) itemSummary.append(", ");
+                                           itemSummary.append(oItems.get(ii).get("quantity"))
+                                                      .append("× ").append(oItems.get(ii).get("productName"));
+                                       }
+                                   }
+                                   String createdAt = (String) order.get("createdAt");
+                                   String displayDate = createdAt != null && createdAt.length() >= 10
+                                       ? createdAt.substring(0, 10) : "-";
+                            %>
                             <tr>
                                 <td><strong>#<%= order.get("orderId") %></strong></td>
-                                <td><%= order.get("orderDate") %></td>
-                                <td><%= order.get("itemSummary") %></td>
-                                <td><strong>&pound;<%= String.format("%.2f", (Double) order.get("total")) %></strong></td>
+                                <td><%= displayDate %></td>
+                                <td style="font-size:0.85rem;"><%= itemSummary.toString() %></td>
+                                <td><strong>&pound;<%= String.format("%.2f", (Double) order.get("totalAmount")) %></strong></td>
                                 <td>
                                     <span class="badge badge-<%= order.get("status") %>">
                                         <%= order.get("status") %>
@@ -200,10 +255,8 @@
     </div>
 </div>
 
-<footer class="footer">
-    <div class="container">
-        <p>&copy; 2025 La Farine Pâtisserie</p>
-    </div>
-</footer>
+<%-- footer --%>
+<%@ include file="../includes/footer.jsp" %>
+
 </body>
 </html>

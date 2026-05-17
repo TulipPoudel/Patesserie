@@ -10,34 +10,29 @@ import java.sql.*;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpSession;
 
-
 import com.patisserie.config.DBConfig;
 import com.patisserie.model.User;
 
-/**
- * Servlet implementation class AdminDashboardServlet
- */
 @WebServlet(asyncSupported = true, urlPatterns = { "/AdminDashboardServlet" })
 public class AdminDashboardServlet extends HttpServlet {
-	 
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
- 
-        // Security: must be logged in as admin
+
         HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/login");
+            // FIXED: was "/login" (404) — now correctly points to /LoginServlet
+            response.sendRedirect(request.getContextPath() + "/LoginServlet");
             return;
         }
- 
+
         User user = (User) session.getAttribute("user");
         if (!"admin".equals(user.getRole())) {
-            response.sendRedirect(request.getContextPath() + "/dashboard");
+            response.sendRedirect(request.getContextPath() + "/DashboardServlet");
             return;
         }
- 
-        // Load summary stats for the dashboard
+
         try {
             request.setAttribute("totalUsers",    countTable("users"));
             request.setAttribute("totalOrders",   countTable("orders"));
@@ -46,10 +41,10 @@ public class AdminDashboardServlet extends HttpServlet {
         } catch (SQLException e) {
             request.setAttribute("error", "Could not load dashboard data.");
         }
- 
+
         request.getRequestDispatcher("/WEB-INF/pages/admin-dashboard.jsp").forward(request, response);
     }
- 
+
     private int countTable(String tableName) throws SQLException {
         String sql = "SELECT COUNT(*) FROM " + tableName;
         try (Connection conn = DBConfig.getConnection();
@@ -58,7 +53,7 @@ public class AdminDashboardServlet extends HttpServlet {
             return rs.next() ? rs.getInt(1) : 0;
         }
     }
- 
+
     private double sumRevenue() throws SQLException {
         String sql = "SELECT COALESCE(SUM(total_amount), 0) FROM orders WHERE status != 'cancelled'";
         try (Connection conn = DBConfig.getConnection();

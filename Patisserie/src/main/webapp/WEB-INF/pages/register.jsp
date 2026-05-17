@@ -5,8 +5,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register – La Farine Pâtisserie</title>
-    <link rel="stylesheet" href="<%= request.getContextPath() %>/css/style.css">
+    <title>Register – L'Atelier Sucré Pâtisserie</title>
+    <link rel="stylesheet" href="<%= request.getContextPath() %>/css/style.css?v=2">
 </head>
 <body>
 
@@ -14,7 +14,7 @@
     <div class="auth-box">
 
         <div class="auth-logo">
-            <h1>La Farine</h1>
+            <h1>L'Atelier Sucré</h1>
             <p>Create your account</p>
         </div>
 
@@ -32,7 +32,7 @@
                 <input type="text"
                        id="fullName"
                        name="fullName"
-                       placeholder="e.g. Sophie Martin"
+                       placeholder="e.g. Tulip Poudel"
                        required
                        value="<%= request.getAttribute("fullName") != null ? request.getAttribute("fullName") : "" %>">
                 <small style="color:#888; font-size:0.8rem;">No numbers allowed in name</small>
@@ -90,8 +90,9 @@
 
 <footer class="footer">
     <div class="container">
-        <p>&copy; 2025 La Farine Pâtisserie</p>
+        <p>&copy; 2025 L'Atelier Sucré Pâtisserie</p>
     </div>
 </footer>
+
 </body>
 </html>

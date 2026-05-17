@@ -73,6 +73,19 @@ public class AdminUsersServlet extends HttpServlet {
             } else if ("unlock".equals(action)) {
                 unlockUser(targetId);
                 request.setAttribute("success", "User account unlocked.");
+            } else if ("changeRole".equals(action)) {
+                // NEW: promote/demote users
+                if (targetId == admin.getUserId()) {
+                    request.setAttribute("error", "You cannot change your own role.");
+                } else {
+                    String newRole = request.getParameter("role");
+                    if ("admin".equals(newRole) || "customer".equals(newRole)) {
+                        changeUserRole(targetId, newRole);
+                        request.setAttribute("success", "User role updated to \"" + newRole + "\".");
+                    } else {
+                        request.setAttribute("error", "Invalid role specified.");
+                    }
+                }
             }
         } catch (SQLException e) {
             request.setAttribute("error", "Database error: " + e.getMessage());
@@ -95,6 +108,16 @@ public class AdminUsersServlet extends HttpServlet {
         try (Connection conn = DBConfig.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setInt(1, userId);
+            ps.executeUpdate();
+        }
+    }
+
+    private void changeUserRole(int userId, String role) throws SQLException {
+        String sql = "UPDATE users SET role = ? WHERE user_id = ?";
+        try (Connection conn = DBConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, role);
+            ps.setInt(2, userId);
             ps.executeUpdate();
         }
     }

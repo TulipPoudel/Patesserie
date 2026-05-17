@@ -1,5 +1,5 @@
 <%
-    response.sendRedirect(request.getContextPath() + "/LoginServlet");
+    response.sendRedirect(request.getContextPath() + "/DashboardServlet");
 %>
 
 

@@ -1,27 +1,35 @@
 package com.patisserie.service;
- 
- 
+
 import com.patisserie.config.DBConfig;
 import com.patisserie.model.User;
- 
-import java.security.MessageDigest;
+import org.mindrot.jbcrypt.BCrypt;
+
 import java.sql.*;
 
 public class UserService {
 
     private static final int MAX_FAILED = 5;
 
-    // Converts plain text password to hash
+    // ✅ BCrypt hashing (replaces SHA-256)
     public String hashPassword(String password) {
-        try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(password.getBytes("UTF-8"));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) sb.append(String.format("%02x", b));
-            return sb.toString();
-        } catch (Exception e) {
-            throw new RuntimeException("Hashing failed", e);
+        return BCrypt.hashpw(password, BCrypt.gensalt(12));
+    }
+
+    // ✅ BCrypt verification
+    public boolean checkPassword(String plain, String hashed) {
+        return BCrypt.checkpw(plain, hashed);
+    }
+
+    // Fetch user by email (used for cookie auto-login)
+    public User getUserByEmail(String email) throws SQLException {
+        String sql = "SELECT * FROM users WHERE email = ? AND is_locked = false";
+        try (Connection conn = DBConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, email);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return mapUser(rs);
         }
+        return null;
     }
 
     // Returns User if credentials correct, null if wrong
@@ -33,8 +41,9 @@ public class UserService {
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
                 if (rs.getBoolean("is_locked")) return null;
-                if (rs.getString("password").equals(hashPassword(password))) {
-                    resetAttempts(email);  // ← now defined below
+                // ✅ BCrypt comparison instead of hash equality check
+                if (checkPassword(password, rs.getString("password"))) {
+                    resetAttempts(email);
                     return mapUser(rs);
                 } else {
                     incrementAttempts(email, rs.getInt("failed_attempts"));
@@ -53,10 +62,20 @@ public class UserService {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, fullName);
             ps.setString(2, email);
-            ps.setString(3, hashPassword(password));
+            ps.setString(3, hashPassword(password)); // ✅ BCrypt hash stored
             ps.setString(4, phone);
             ps.executeUpdate();
             return true;
+        }
+    }
+
+    // ✅ Phone uniqueness check (required by coursework spec)
+    public boolean phoneExists(String phone) throws SQLException {
+        String sql = "SELECT user_id FROM users WHERE phone = ?";
+        try (Connection conn = DBConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, phone);
+            return ps.executeQuery().next();
         }
     }
 
@@ -91,7 +110,6 @@ public class UserService {
         }
     }
 
-    // ← THIS WAS MISSING — resets failed attempts on successful login
     private void resetAttempts(String email) throws SQLException {
         String sql = "UPDATE users SET failed_attempts=0, is_locked=false WHERE email=?";
         try (Connection conn = DBConfig.getConnection();
@@ -101,7 +119,6 @@ public class UserService {
         }
     }
 
-    // Maps a ResultSet row to a User object
     private User mapUser(ResultSet rs) throws SQLException {
         User user = new User();
         user.setUserId(rs.getInt("user_id"));

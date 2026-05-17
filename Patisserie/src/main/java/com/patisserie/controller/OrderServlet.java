@@ -7,20 +7,15 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
+import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.patisserie.config.DBConfig;
 import com.patisserie.model.User;
 
-/**
- * Servlet implementation class OrderServlet
- * Manages the session-based shopping cart and order placement.
- *
- * Cart structure: session attribute "cart" = List<Map<String,Object>>
- * Each map has keys: productId, productName, price (Double), quantity (Integer), subtotal (Double)
- */
 @WebServlet(asyncSupported = true, urlPatterns = { "/OrderServlet" })
 public class OrderServlet extends HttpServlet {
 
@@ -34,10 +29,14 @@ public class OrderServlet extends HttpServlet {
             return;
         }
 
-        // TODO: load past orders from DB and attach as request attribute
-        // User user = (User) session.getAttribute("user");
-        // List<Map<String,Object>> pastOrders = orderService.getByUser(user.getUserId());
-        // request.setAttribute("pastOrders", pastOrders);
+        User user = (User) session.getAttribute("user");
+
+        try {
+            List<Map<String, Object>> pastOrders = getPastOrders(user.getUserId());
+            request.setAttribute("pastOrders", pastOrders);
+        } catch (SQLException e) {
+            request.setAttribute("error", "Could not load past orders.");
+        }
 
         request.getRequestDispatcher("/WEB-INF/pages/orders.jsp").forward(request, response);
     }
@@ -46,6 +45,7 @@ public class OrderServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
+        // Fix: guests redirected to login instead of NPE
         HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("user") == null) {
             response.sendRedirect(request.getContextPath() + "/LoginServlet");
@@ -85,8 +85,6 @@ public class OrderServlet extends HttpServlet {
         }
     }
 
-    // ── Cart helpers ──────────────────────────────────────────────────────────
-
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> getCart(HttpSession session) {
         List<Map<String, Object>> cart = (List<Map<String, Object>>) session.getAttribute("cart");
@@ -111,7 +109,6 @@ public class OrderServlet extends HttpServlet {
 
         List<Map<String, Object>> cart = getCart(session);
 
-        // Check if already in cart — just increment quantity
         for (Map<String, Object> item : cart) {
             if (productId.equals(item.get("productId"))) {
                 int newQty = (Integer) item.get("quantity") + quantity;
@@ -121,7 +118,6 @@ public class OrderServlet extends HttpServlet {
             }
         }
 
-        // New item
         Map<String, Object> item = new HashMap<>();
         item.put("productId",   productId);
         item.put("productName", productName);
@@ -166,14 +162,102 @@ public class OrderServlet extends HttpServlet {
             return;
         }
 
-        // TODO: persist order to database
-        // User user = (User) session.getAttribute("user");
-        // orderService.placeOrder(user.getUserId(), cart);
+        User user = (User) session.getAttribute("user");
 
-        // Clear cart after successful checkout
-        session.removeAttribute("cart");
+        try {
+            persistOrder(user.getUserId(), cart);
+            session.removeAttribute("cart");
+            request.setAttribute("success", "Order placed successfully! We'll have it ready for you soon.");
+        } catch (SQLException e) {
+            request.setAttribute("error", "Could not place order. Please try again.");
+        }
 
-        request.setAttribute("success", "Order placed successfully! We'll have it ready for you soon.");
+        try {
+            request.setAttribute("pastOrders", getPastOrders(user.getUserId()));
+        } catch (SQLException ignored) {}
+
         request.getRequestDispatcher("/WEB-INF/pages/orders.jsp").forward(request, response);
+    }
+
+    private void persistOrder(int userId, List<Map<String, Object>> cart) throws SQLException {
+        double total = cart.stream().mapToDouble(i -> (Double) i.get("subtotal")).sum();
+
+        String insertOrder = "INSERT INTO orders (user_id, total_amount, status, created_at) VALUES (?, ?, 'pending', NOW())";
+        String insertItem  = "INSERT INTO order_items (order_id, product_id, product_name, price, quantity, subtotal) VALUES (?, ?, ?, ?, ?, ?)";
+
+        try (Connection conn = DBConfig.getConnection()) {
+            conn.setAutoCommit(false);
+            try {
+                int orderId;
+                try (PreparedStatement ps = conn.prepareStatement(insertOrder, Statement.RETURN_GENERATED_KEYS)) {
+                    ps.setInt(1, userId);
+                    ps.setDouble(2, total);
+                    ps.executeUpdate();
+                    try (ResultSet rs = ps.getGeneratedKeys()) {
+                        if (!rs.next()) throw new SQLException("Failed to retrieve order ID.");
+                        orderId = rs.getInt(1);
+                    }
+                }
+
+                try (PreparedStatement ps = conn.prepareStatement(insertItem)) {
+                    for (Map<String, Object> item : cart) {
+                        ps.setInt(1, orderId);
+                        ps.setInt(2, Integer.parseInt((String) item.get("productId")));
+                        ps.setString(3, (String) item.get("productName"));
+                        ps.setDouble(4, (Double) item.get("price"));
+                        ps.setInt(5, (Integer) item.get("quantity"));
+                        ps.setDouble(6, (Double) item.get("subtotal"));
+                        ps.addBatch();
+                    }
+                    ps.executeBatch();
+                }
+
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        }
+    }
+
+    private List<Map<String, Object>> getPastOrders(int userId) throws SQLException {
+        String sql = "SELECT o.order_id, o.total_amount, o.status, o.created_at, " +
+                     "       oi.product_name, oi.price, oi.quantity, oi.subtotal " +
+                     "FROM orders o " +
+                     "JOIN order_items oi ON o.order_id = oi.order_id " +
+                     "WHERE o.user_id = ? " +
+                     "ORDER BY o.created_at DESC";
+
+        Map<Integer, Map<String, Object>> orderMap = new java.util.LinkedHashMap<>();
+
+        try (Connection conn = DBConfig.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int orderId = rs.getInt("order_id");
+                    if (!orderMap.containsKey(orderId)) {
+                        Map<String, Object> order = new HashMap<>();
+                        order.put("orderId",     orderId);
+                        order.put("totalAmount", rs.getDouble("total_amount"));
+                        order.put("status",      rs.getString("status"));
+                        order.put("createdAt",   rs.getString("created_at"));
+                        order.put("items",       new ArrayList<Map<String, Object>>());
+                        orderMap.put(orderId, order);
+                    }
+                    Map<String, Object> item = new HashMap<>();
+                    item.put("productName", rs.getString("product_name"));
+                    item.put("price",       rs.getDouble("price"));
+                    item.put("quantity",    rs.getInt("quantity"));
+                    item.put("subtotal",    rs.getDouble("subtotal"));
+                    @SuppressWarnings("unchecked")
+                    List<Map<String, Object>> items = (List<Map<String, Object>>) orderMap.get(orderId).get("items");
+                    items.add(item);
+                }
+            }
+        }
+        return new ArrayList<>(orderMap.values());
     }
 }

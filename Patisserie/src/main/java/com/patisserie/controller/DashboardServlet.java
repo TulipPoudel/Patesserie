@@ -17,35 +17,51 @@ import com.patisserie.model.User;
 @WebServlet(asyncSupported = true, urlPatterns = { "/DashboardServlet" })
 public class DashboardServlet extends HttpServlet {
 	 
+    private final com.patisserie.service.UserService userService = new com.patisserie.service.UserService();
+
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
- 
-        // Security check: must be logged in
+
         HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/login");
-            return;
-        }
- 
-        User user = (User) session.getAttribute("user");
- 
-        // Admin should not see customer dashboard
-        if ("admin".equals(user.getRole())) {
-            response.sendRedirect(request.getContextPath() + "/admin/dashboard");
-            return;
-        }
- 
-        // Check for "Welcome back" cookie to display greeting
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie c : cookies) {
-                if ("userName".equals(c.getName())) {
-                    request.setAttribute("welcomeBack", c.getValue());
+        User user = (session != null) ? (User) session.getAttribute("user") : null;
+
+        // ── Auto-login via Remember Me cookie ────────────────
+        if (user == null) {
+            Cookie[] cookies = request.getCookies();
+            if (cookies != null) {
+                String rememberedEmail = null;
+                for (Cookie c : cookies) {
+                    if ("rememberedEmail".equals(c.getName()) && !c.getValue().isEmpty()) {
+                        rememberedEmail = c.getValue();
+                    }
+                }
+                if (rememberedEmail != null) {
+                    try {
+                        // Look up user by email (no password needed — cookie is the trust token)
+                        user = userService.getUserByEmail(rememberedEmail);
+                        if (user != null) {
+                            HttpSession newSession = request.getSession(true);
+                            newSession.setAttribute("user", user);
+                            newSession.setMaxInactiveInterval(30 * 60);
+                        }
+                    } catch (Exception e) {
+                        // Cookie lookup failed — continue as guest
+                    }
                 }
             }
         }
- 
+
+        // ── Admin redirect ────────────────────────────────────
+        if (user != null && "admin".equals(user.getRole())) {
+            response.sendRedirect(request.getContextPath() + "/AdminDashboardServlet");
+            return;
+        }
+
+        // ── Pass user (or null for guest) to JSP ─────────────
+        request.setAttribute("loggedInUser", user);
+        request.setAttribute("guestMode", user == null);
+
         request.getRequestDispatcher("/WEB-INF/pages/dashboard.jsp").forward(request, response);
     }
 }

@@ -32,7 +32,7 @@ public class ProfileServlet extends HttpServlet {
 
         HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/LoginServlet");
+            response.sendRedirect(request.getContextPath() + "/DashboardServlet");
             return;
         }
 
@@ -46,7 +46,7 @@ public class ProfileServlet extends HttpServlet {
 
         HttpSession session = request.getSession(false);
         if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/LoginServlet");
+            response.sendRedirect(request.getContextPath() + "/DashboardServlet");
             return;
         }
 

@@ -5,8 +5,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login – La Farine Pâtisserie</title>
-    <link rel="stylesheet" href="<%= request.getContextPath() %>/css/style.css">
+    <title>Login – L'Atelier Sucré Pâtisserie</title>
+    <link rel="stylesheet" href="<%= request.getContextPath() %>/css/style.css?v=2">
 </head>
 <body>
 
@@ -15,7 +15,7 @@
 
         <%-- Logo / branding --%>
         <div class="auth-logo">
-            <h1>La Farine</h1>
+            <h1>L'Atelier Sucré</h1>
             <p>Pâtisserie &mdash; Sign in to your account</p>
         </div>
 
@@ -24,6 +24,12 @@
             <div class="alert alert-info">
                 Welcome back, <strong><%= request.getAttribute("welcomeBack") %></strong>!
             </div>
+        <% } %>
+
+        <%-- Flash success from password reset --%>
+        <% if (session.getAttribute("flashSuccess") != null) { %>
+            <div class="alert alert-success"><%= session.getAttribute("flashSuccess") %></div>
+            <% session.removeAttribute("flashSuccess"); %>
         <% } %>
 
         <%-- Error message (wrong password, locked, etc.) --%>
@@ -78,6 +84,13 @@
             </div>
 
             <button type="submit" class="btn btn-primary btn-block">Sign In</button>
+
+            <div style="text-align:right; margin-top:0.6rem;">
+                <a href="<%= request.getContextPath() %>/ForgotPasswordServlet"
+                   style="font-size:0.82rem; color:var(--brown); text-decoration:none;">
+                    Forgot your password?
+                </a>
+            </div>
         </form>
 
         <div class="auth-footer">
@@ -88,10 +101,8 @@
     </div>
 </div>
 
-<footer class="footer">
-    <div class="container">
-        <p>&copy; 2025 La Farine Pâtisserie</p>
-    </div>
-</footer>
+<%-- footer --%>
+<%@ include file="../includes/footer.jsp" %>
+
 </body>
 </html>

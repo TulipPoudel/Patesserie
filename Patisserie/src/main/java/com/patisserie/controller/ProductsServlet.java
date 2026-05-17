@@ -22,10 +22,7 @@ public class ProductsServlet extends HttpServlet {
             throws ServletException, IOException {
 
         HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/LoginServlet");
-            return;
-        }
+        // guests are allowed to browse the menu — no redirect
 
         try (Connection conn = DBConfig.getConnection()) {
             // Join pastries with categories to get category name

@@ -18,12 +18,7 @@ public class LocationServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
-        // Security check: must be logged in
-        HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("user") == null) {
-            response.sendRedirect(request.getContextPath() + "/LoginServlet");
-            return;
-        }
+        // guests are allowed to view locations — no redirect
 
         request.getRequestDispatcher("/WEB-INF/pages/locations.jsp").forward(request, response);
     }
